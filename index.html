@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="zh-Hant"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>吃貨打卡本 🍡</title>
+<link href="https://fonts.googleapis.com/css2?family=Huninn&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#fbf5e6;--card:#fffdf6;--ink:#5a4332;--soft:#9a8372;--pink:#f4b6c2;--pink-d:#c4566f;--yel:#f9e29c;--sage:#b7cdb0;--line:#e8dcc0}
+*{box-sizing:border-box;margin:0}
+body{font-family:'Huninn','PingFang TC','Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(--paper);color:var(--ink);padding-bottom:100px;background-image:radial-gradient(#eadfc4 1px,transparent 1px);background-size:22px 22px}
+.wrap{max-width:900px;margin:0 auto;padding:16px}
+header{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+h1{font-size:1.7rem}h2{margin-bottom:10px}h3{margin:14px 0 6px}
+nav{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0}
+button{font:inherit;color:var(--ink);cursor:pointer}
+nav button,.tool{border:2px solid var(--line);background:var(--card);border-radius:999px;padding:8px 16px}
+nav button.on{background:var(--yel);border-color:#e6c85a}
+.tool{padding:6px 12px;font-size:.85rem}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:14px}
+.card{background:var(--card);border:2px solid var(--line);border-radius:18px;padding:14px;box-shadow:3px 4px 0 var(--line);position:relative;animation:pop .3s}
+@keyframes pop{from{transform:scale(.94) rotate(-1deg);opacity:0}}
+.card:nth-child(3n+1){transform:rotate(-.4deg)}.card:nth-child(3n){transform:rotate(.4deg)}
+.card h3{margin:0 0 4px}.meta{font-size:.82rem;color:var(--soft)}
+.tag{display:inline-block;background:var(--sage);border-radius:999px;padding:2px 10px;font-size:.78rem;margin:4px 4px 0 0}
+.stat{background:var(--yel);border-radius:16px;padding:12px}.stat b{display:block;font-size:1.25rem}.stat span{font-size:.8rem;color:var(--soft)}
+.stat:nth-child(2n){background:var(--pink)}.stat:nth-child(3n){background:var(--sage)}
+.bar{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:10px}
+input,select,textarea{font:inherit;color:var(--ink);width:100%;border:2px solid var(--line);border-radius:12px;padding:9px 12px;background:#fff}
+input:focus,select:focus,textarea:focus,button:focus-visible{outline:3px solid var(--pink-d);outline-offset:1px}
+label{display:block;font-size:.85rem;color:var(--soft);margin-top:10px}label input,label select,label textarea{margin-top:3px}
+.meal{border:2px dashed var(--line);border-radius:14px;padding:10px;margin:8px 0;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.meal .full{grid-column:1/-1}
+.st{border:0;background:none;font-size:1.7rem;color:#e3d7bd;padding:0 3px}.st.on{color:#f0a500}
+.err{display:block;color:var(--pink-d);font-size:.82rem;margin-top:3px}
+.primary{background:var(--pink);border:0;border-radius:999px;padding:11px 22px;box-shadow:0 4px 0 var(--pink-d)}
+.ghost{background:var(--card);border:2px solid var(--line);border-radius:999px;padding:9px 16px}
+.danger{color:var(--pink-d)}
+.fab{position:fixed;right:max(16px,calc(50% - 440px));bottom:20px;z-index:5;font-size:1.05rem;padding:14px 22px}
+dialog{border:0;border-radius:24px;padding:20px;width:min(94vw,560px);max-height:92vh;overflow:auto;background:var(--card);color:var(--ink);margin:auto}
+dialog::backdrop{background:rgba(90,67,50,.4)}
+.acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.empty{text-align:center;color:var(--soft);padding:34px 12px;background:var(--card);border:2px dashed var(--line);border-radius:18px;grid-column:1/-1}
+#toast{position:fixed;left:50%;bottom:84px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:999px;z-index:20;display:none;max-width:90vw}
+#banner{background:#ffd9d9;border-radius:14px;padding:10px 14px;margin-bottom:10px}#banner:empty{display:none}
+.chips button{border:2px solid var(--line);background:#fff;border-radius:999px;padding:4px 12px;margin:3px 3px 0 0}.chips button.on{background:var(--sage)}
+@media(max-width:480px){.meal{grid-template-columns:1fr}.wrap{padding:12px}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important}}
+</style></head><body>
+<div class="wrap">
+<header><h1>🍡 吃貨打卡本</h1><div><button class="tool" data-act="export">匯出備份</button> <button class="tool" data-act="import">匯入備份</button><input type="file" id="file" accept="application/json,.json" hidden></div></header>
+<nav><button data-v="home">首頁</button><button data-v="list">我的打卡</button><button data-v="wish">想吃清單</button></nav>
+<div id="banner"></div><main id="app"></main></div>
+<button class="primary fab" data-act="add">＋ 快速打卡</button>
+<dialog id="dlg"></dialog><div id="toast" role="status"></div>
+<datalist id="types"></datalist>
+<script>
+const KEY='foodie-checkin:v1',TYPES=['拉麵','火鍋','燒肉','飯類','麵食','炸物','甜點','飲料','咖啡','早餐','其他'],SCENES=['聚餐','約會','宵夜','下午茶','一個人吃','慶生','工作午餐','外帶'];
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const emptyDB=()=>({schemaVersion:1,records:[],wishlist:[],customMealTypes:[],customSceneTags:[]});
+const cents=x=>Math.round(x*100),fmt=n=>'NT$'+n.toLocaleString('zh-TW',{maximumFractionDigits:2});
+const today=()=>{const d=new Date();return new Date(d-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
+const uid=p=>p+'-'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const norm=s=>String(s).trim().replace(/\s+/g,' ').replace(/臺/g,'台').toLowerCase();
+const region=l=>[l.city,l.district].filter(Boolean).join('・');
+const isDate=s=>/^\d{4}-\d{2}-\d{2}$/.test(s)&&!isNaN(Date.parse(s));
+const okMoney=s=>/^\d+(\.\d{1,2})?$/.test(String(s).trim()),okQty=s=>/^[1-9]\d*$/.test(String(s).trim());
+const star=x=>Number.isInteger(x)&&x>=1&&x<=5,money=x=>typeof x==='number'&&Number.isFinite(x)&&x>=0&&Math.abs(x*100-Math.round(x*100))<1e-6;
+const avg=r=>r.meals.reduce((s,m)=>s+m.rating,0)/r.meals.length;
+const total=r=>r.meals.reduce((s,m)=>s+cents(m.unitPrice)*m.quantity,0)/100;
+const stars=n=>'★'.repeat(Math.round(n))+'☆'.repeat(5-Math.round(n));
+let db=emptyDB(),corrupt=null,view='home',F={q:'',type:'',region:'',scene:'',sort:'new'},D=null,D0='',W=null,dmode='';
+
+function validate(o,imp){
+ if(!o||typeof o!=='object')return'檔案格式錯誤';
+ if(imp&&o.appId!=='foodie-checkin')return'這不是吃貨打卡本的備份檔';
+ if(o.schemaVersion!==1)return'不支援的資料版本';
+ if(!Array.isArray(o.records)||!Array.isArray(o.wishlist))return'缺少 records 或 wishlist';
+ const out=emptyDB(),ids=new Set(),S=(x,n)=>typeof x==='string'&&x.length<=n,NE=(x,n)=>S(x,n)&&x.trim()!=='';
+ for(const r of o.records){
+  if(!r||!NE(r.id,100)||ids.has(r.id))return'打卡 ID 缺漏或重複';ids.add(r.id);
+  const l=r.location||{};
+  if(!NE(r.restaurantName,100))return'店名不合法';if(!isDate(r.visitDate))return'用餐日期不合法';
+  if(!S(l.address??'',300)||!S(l.city??'',50)||!S(l.district??'',50))return'地址欄位不合法';
+  const a=l.lat!=null,b=l.lng!=null;
+  if(a!==b||(a&&!(Number.isFinite(l.lat)&&Number.isFinite(l.lng)&&Math.abs(l.lat)<=90&&Math.abs(l.lng)<=180)))return'座標不合法';
+  if(!Array.isArray(r.meals)||!r.meals.length)return'每筆打卡至少要有一筆餐點';
+  for(const m of r.meals)if(!m||!NE(m.name,100)||!NE(m.type,30)||!money(m.unitPrice)||!Number.isInteger(m.quantity)||m.quantity<1||!star(m.rating))return'餐點資料不合法（金額、數量或評分）';
+  if(!money(r.paidAmount)||!['auto','manual'].includes(r.paidAmountMode)||!star(r.revisitRating))return'實付金額、模式或回訪意願不合法';
+  const tg=Array.isArray(r.sceneTags)?r.sceneTags:[];
+  if(tg.some(t=>!NE(t,30))||new Set(tg).size!==tg.length)return'場景標籤不合法或重複';
+  if(!S(r.notes??'',2000))return'心得過長';
+  out.records.push({id:r.id,restaurantName:r.restaurantName.trim(),visitDate:r.visitDate,location:{address:l.address??'',city:l.city??'',district:l.district??'',lat:a?l.lat:null,lng:a?l.lng:null},meals:r.meals.map(m=>({id:S(m.id,100)&&m.id?m.id:uid('meal'),name:m.name.trim(),type:m.type.trim(),unitPrice:m.unitPrice,quantity:m.quantity,rating:m.rating})),paidAmount:r.paidAmount,paidAmountMode:r.paidAmountMode,revisitRating:r.revisitRating,sceneTags:tg,notes:r.notes??'',sourceWishlistId:r.sourceWishlistId||null,createdAt:S(r.createdAt,40)&&r.createdAt||new Date().toISOString(),updatedAt:S(r.updatedAt,40)&&r.updatedAt||new Date().toISOString()});
+ }
+ for(const w of o.wishlist){
+  if(!w||!NE(w.id,100)||ids.has(w.id))return'想吃 ID 缺漏或重複';ids.add(w.id);
+  const l=w.location||{};
+  if(!NE(w.restaurantName,100)||!['high','medium','low'].includes(w.priority)||!isDate(w.savedDate))return'想吃項目資料不合法';
+  if(!S(l.address??'',300)||!S(l.city??'',50)||!S(l.district??'',50)||!S(w.reason??'',2000))return'想吃項目欄位不合法';
+  const dm=Array.isArray(w.desiredMeals)?w.desiredMeals:[];
+  if(dm.some(m=>!m||!NE(m.name,100)||!S(m.type??'',30)))return'想吃餐點不合法';
+  out.wishlist.push({id:w.id,restaurantName:w.restaurantName.trim(),desiredMeals:dm.map(m=>({name:m.name.trim(),type:m.type??''})),location:{address:l.address??'',city:l.city??'',district:l.district??'',lat:null,lng:null},reason:w.reason??'',priority:w.priority,savedDate:w.savedDate,createdAt:S(w.createdAt,40)&&w.createdAt||new Date().toISOString(),updatedAt:S(w.updatedAt,40)&&w.updatedAt||new Date().toISOString()});
+ }
+ const ok=a=>Array.isArray(a)?[...new Set(a.filter(t=>NE(t,30)))]:[];
+ out.customMealTypes=ok(o.customMealTypes);out.customSceneTags=ok(o.customSceneTags);return out;
+}
+try{const raw=localStorage.getItem(KEY);if(raw){const r=validate(JSON.parse(raw));if(typeof r==='string')throw 0;db=r}}catch(e){corrupt=localStorage.getItem(KEY)}
+function toast(t,bad){const el=$('#toast');el.textContent=t;el.style.background=bad?'#c4566f':'';el.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>el.style.display='none',2600)}
+function commit(fn){
+ if(corrupt){toast('儲存的資料損毀，已暫停寫入。請先匯入備份或下載原始資料',1);return false}
+ const s=JSON.stringify(db);fn();
+ try{localStorage.setItem(KEY,JSON.stringify(db));return true}catch(e){db=JSON.parse(s);toast('保存失敗，資料未變更，請重試或先匯出備份',1);return false}
+}
+const allTypes=()=>[...new Set([...TYPES,...db.customMealTypes])],allScenes=()=>[...new Set([...SCENES,...db.customSceneTags])];
+
+/* ---------- 畫面 ---------- */
+function render(){
+ $$('nav [data-v]').forEach(b=>b.classList.toggle('on',b.dataset.v===view));
+ $('#banner').innerHTML=corrupt?'儲存的資料無法讀取，已暫停寫入以免覆蓋。 <button class="tool" data-act="dlraw">下載原始資料</button> 或匯入備份還原。':'';
+ $('#types').innerHTML=allTypes().map(t=>`<option value="${esc(t)}">`).join('');
+ $('#app').innerHTML=view==='home'?home():view==='list'?listView():wishView();
+ if(view==='list')renderRes();
+}
+const topOf=(arr,none)=>{const c={};arr.forEach(k=>k&&(c[k]=(c[k]||0)+1));const mx=Math.max(0,...Object.values(c));return mx?Object.keys(c).filter(k=>c[k]===mx).join('、')+`（${mx} 次）`:none};
+function rcard(r){return`<article class="card"><h3>${esc(r.restaurantName)}</h3><div class="meta">📍 ${esc(region(r.location)||'未填地區')} ・ ${r.visitDate}</div>
+<p>${esc(r.meals.map(m=>m.name+(m.quantity>1?'×'+m.quantity:'')).join('、'))}</p>
+<div>🍡 ${fmt(r.paidAmount)} ・ 餐點 ${avg(r).toFixed(1)} ★ ・ 回訪 ${stars(r.revisitRating)}</div>
+<div>${r.sceneTags.map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div>
+<div class="acts"><button class="ghost" data-act="open" data-id="${esc(r.id)}">查看</button><button class="ghost" data-act="edit" data-id="${esc(r.id)}">編輯</button><button class="ghost danger" data-act="del" data-id="${esc(r.id)}">刪除</button></div></article>`}
+const byDate=(a,b)=>b.visitDate.localeCompare(a.visitDate)||b.createdAt.localeCompare(a.createdAt);
+function home(){
+ const ym=today().slice(0,7),m=db.records.filter(r=>r.visitDate.startsWith(ym));
+ const spend=m.reduce((s,r)=>s+cents(r.paidAmount),0)/100;
+ const shops=new Set(m.map(r=>norm(r.restaurantName)+'|'+norm(r.location.address||region(r.location))));
+ const rec=[...db.records].sort(byDate).slice(0,6);
+ return`<div class="bar" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
+<div class="stat"><b>${fmt(spend)}</b><span>本月花費</span></div><div class="stat"><b>${shops.size} 間</b><span>本月吃過的店</span></div>
+<div class="stat"><b>${esc(topOf(m.flatMap(r=>r.meals.map(x=>x.type)),'尚無紀錄'))}</b><span>本月最常吃類型</span></div>
+<div class="stat"><b>${esc(topOf(m.map(r=>region(r.location)),'尚無地區資料'))}</b><span>本月最常出沒地區</span></div>
+<div class="stat"><b>${esc(topOf(m.flatMap(r=>r.sceneTags),'尚無場景資料'))}</b><span>本月最常用場景</span></div></div>
+<h2>最近紀錄</h2><div class="grid">${rec.length?rec.map(rcard).join(''):'<div class="empty">還沒有打卡紀錄 🍽️<br>按右下角「＋ 快速打卡」記下第一餐吧</div>'}</div>`}
+const S={new:(a,b)=>0,old:(a,b)=>a.visitDate.localeCompare(b.visitDate)||a.createdAt.localeCompare(b.createdAt),rh:(a,b)=>avg(b)-avg(a),rl:(a,b)=>avg(a)-avg(b),ph:(a,b)=>b.paidAmount-a.paidAmount,pl:(a,b)=>a.paidAmount-b.paidAmount,vh:(a,b)=>b.revisitRating-a.revisitRating};
+function listView(){
+ const regs=[...new Set(db.records.map(r=>region(r.location)).filter(Boolean))];
+ const o=(arr,v,all)=>`<option value="">${all}</option>`+arr.map(x=>`<option${x===v?' selected':''}>${esc(x)}</option>`).join('');
+ return`<div class="bar"><input id="fq" type="search" placeholder="🔍 搜尋店家或餐點" aria-label="關鍵字搜尋" value="${esc(F.q)}">
+<select id="ft" aria-label="餐點類型">${o(allTypes(),F.type,'全部類型')}</select><select id="fr" aria-label="地區">${o(regs,F.region,'全部地區')}</select>
+<select id="fs" aria-label="場景">${o(allScenes(),F.scene,'全部場景')}</select>
+<select id="fo" aria-label="排序">${[['new','最新'],['old','最舊'],['rh','評分最高'],['rl','評分最低'],['ph','金額最高'],['pl','金額最低'],['vh','回訪意願最高']].map(([k,t])=>`<option value="${k}"${F.sort===k?' selected':''}>${t}</option>`).join('')}</select>
+<button class="ghost" data-act="clear">清除篩選</button></div><div id="count" class="meta"></div><div class="grid" id="res"></div>`}
+function renderRes(){
+ const q=norm(F.q);
+ const L=db.records.filter(r=>(!q||norm(r.restaurantName).includes(q)||r.meals.some(m=>norm(m.name).includes(q)))&&(!F.type||r.meals.some(m=>m.type===F.type))&&(!F.region||region(r.location)===F.region)&&(!F.scene||r.sceneTags.includes(F.scene)))
+ .sort((a,b)=>S[F.sort](a,b)||byDate(a,b)||a.id.localeCompare(b.id));
+ $('#count').textContent=`符合 ${L.length} 筆（共 ${db.records.length} 筆）`;
+ $('#res').innerHTML=L.length?L.map(rcard).join(''):`<div class="empty">${db.records.length?'找不到符合的紀錄，試試清除篩選':'還沒有打卡紀錄 🍽️'}</div>`;
+}
+const PRI={high:'高',medium:'中',low:'低'};
+function wishView(){
+ const L=[...db.wishlist].sort((a,b)=>['high','medium','low'].indexOf(a.priority)-['high','medium','low'].indexOf(b.priority)||b.savedDate.localeCompare(a.savedDate));
+ return`<div class="acts" style="margin:0 0 12px"><button class="primary" data-act="wadd">＋ 新增想吃</button></div><div class="grid">${L.length?L.map(w=>`<article class="card"><h3>${esc(w.restaurantName)} <span class="tag" style="background:var(--yel)">優先：${PRI[w.priority]}</span></h3>
+<div class="meta">📍 ${esc(region(w.location)||'未填地區')} ・ 收藏於 ${w.savedDate}</div>
+<p>${esc(w.desiredMeals.map(m=>m.name+(m.type?`（${m.type}）`:'')).join('、')||'尚未填想吃的餐點')}</p><p class="meta">${esc(w.reason)}</p>
+<div class="acts"><button class="primary" data-act="wgo" data-id="${esc(w.id)}">我吃到了 🍡</button><button class="ghost" data-act="wedit" data-id="${esc(w.id)}">編輯</button><button class="ghost danger" data-act="wdel" data-id="${esc(w.id)}">刪除</button></div></article>`).join(''):'<div class="empty">還沒有想吃的店 ✨<br>看到好像不錯的店，先收藏起來吧</div>'}</div>`}
+
+/* ---------- 打卡表單 ---------- */
+const blankMeal=()=>({name:'',type:'',price:'',qty:'1',rating:0});
+function newDraft(){return{id:null,name:'',date:today(),city:'',district:'',address:'',meals:[blankMeal()],paid:'0',mode:'auto',revisit:0,tags:[],extra:[],notes:'',src:null,err:{},lat:null,lng:null}}
+function draftOf(r){return{id:r.id,name:r.restaurantName,date:r.visitDate,city:r.location.city,district:r.location.district,address:r.location.address,meals:r.meals.map(m=>({id:m.id,name:m.name,type:m.type,price:String(m.unitPrice),qty:String(m.quantity),rating:m.rating})),paid:String(r.paidAmount),mode:r.paidAmountMode,revisit:r.revisitRating,tags:[...r.sceneTags],extra:[],notes:r.notes,src:r.sourceWishlistId,err:{},lat:r.location.lat,lng:r.location.lng}}
+const sumDraft=()=>D.meals.reduce((s,m)=>s+(okMoney(m.price)?cents(+m.price):0)*(okQty(m.qty)?+m.qty:0),0)/100;
+function sync(){$$('#dlg [data-f]').forEach(i=>D[i.dataset.f]=i.value);$$('#dlg .meal').forEach(el=>{const m=D.meals[+el.dataset.i];el.querySelectorAll('[data-m]').forEach(i=>m[i.dataset.m]=i.value)})}
+const snap=()=>JSON.stringify({...D,err:0});
+function starBtns(key,v){return[1,2,3,4,5].map(n=>`<button type="button" class="st${n<=v?' on':''}" data-star="${key}" data-v="${n}" aria-label="${n} 星" aria-pressed="${n===v}">★</button>`).join('')+`<span class="meta">${v?v+' 星':'未評分'}</span>`}
+function formHTML(){
+ const e=D.err,E=k=>e[k]?`<small class="err" role="alert">${esc(e[k])}</small>`:'';
+ const sc=[...new Set([...allScenes(),...D.extra])];
+ return`<h2>${D.id?'修改打卡':'新增打卡'} 🍡</h2>
+<label>店家<input data-f="name" maxlength="100" value="${esc(D.name)}">${E('name')}</label>
+<label>用餐日期<input type="date" data-f="date" max="${today()}" value="${D.date}">${E('date')}</label>
+<div class="meal"><label>縣市<input data-f="city" maxlength="50" placeholder="台南市" value="${esc(D.city)}"></label><label>行政區<input data-f="district" maxlength="50" placeholder="東區" value="${esc(D.district)}"></label><label class="full">地址（選填）<input data-f="address" maxlength="300" value="${esc(D.address)}"></label></div>
+<h3>餐點</h3>${E('meals')}
+${D.meals.map((m,i)=>`<div class="meal" data-i="${i}"><input data-m="name" maxlength="100" placeholder="餐點名稱" aria-label="餐點名稱" value="${esc(m.name)}"><input data-m="type" list="types" maxlength="30" placeholder="類型（可自訂）" aria-label="餐點類型" value="${esc(m.type)}">
+<input data-m="price" inputmode="decimal" placeholder="單價" aria-label="單價" value="${esc(m.price)}"><input data-m="qty" inputmode="numeric" placeholder="數量" aria-label="數量" value="${esc(m.qty)}">
+<div class="full">${starBtns('m'+i,m.rating)}</div><div class="full"><button type="button" class="ghost danger" data-rm="${i}">移除餐點</button> <span class="meta" data-sub="${i}"></span>${E('m'+i)}</div></div>`).join('')}
+<button type="button" class="ghost" data-act="addmeal">＋ 新增餐點</button>
+<p>餐點總額：<b id="tot"></b></p>
+<label>實付金額（NT$）<span class="meta" id="mode"></span><input data-f="paid" inputmode="decimal" value="${esc(D.paid)}">${E('paid')}</label>
+<button type="button" class="tool" data-act="recalc" style="margin-top:6px">依餐點總額重算</button>
+<h3>回訪意願</h3><div>${starBtns('rev',D.revisit)}</div>${E('revisit')}
+<h3>場景</h3><div class="chips">${sc.map(t=>`<button type="button" data-tag="${esc(t)}" class="${D.tags.includes(t)?'on':''}" aria-pressed="${D.tags.includes(t)}">${esc(t)}</button>`).join('')}</div>
+<div style="display:flex;gap:6px;margin-top:8px"><input id="newtag" maxlength="30" placeholder="自訂場景" aria-label="自訂場景"><button type="button" class="ghost" data-act="addtag">新增</button></div>
+<label>心得<textarea data-f="notes" rows="3" maxlength="2000">${esc(D.notes)}</textarea></label>
+<div class="acts"><button class="primary" data-act="save">儲存打卡</button><button class="ghost" data-act="cancel">取消</button></div>`}
+function paint(){const y=$('#dlg').scrollTop;$('#dlg').innerHTML=formHTML();upd();$('#dlg').scrollTop=y}
+function upd(){
+ $('#tot').textContent=fmt(sumDraft());$('#mode').textContent=D.mode==='auto'?'（自動：隨餐點變動）':'（手動）';
+ D.meals.forEach((m,i)=>{const el=$(`[data-sub="${i}"]`);if(el)el.textContent=okMoney(m.price)&&okQty(m.qty)?'小計 '+fmt(cents(+m.price)*+m.qty/100):''});
+}
+function openRec(d){D=d||newDraft();dmode='rec';D0=snap();paint();$('#dlg').showModal()}
+function saveRec(){
+ sync();const d=D,e={};
+ if(!d.name.trim())e.name='請填寫店家';
+ if(!isDate(d.date))e.date='請選擇日期';else if(d.date>today())e.date='不可選擇未來日期';
+ if(!d.meals.length)e.meals='至少需要一筆餐點';
+ d.meals.forEach((m,i)=>{const p=[];if(!m.name.trim())p.push('餐點名稱必填');if(!m.type.trim())p.push('類型必填');if(!okMoney(m.price))p.push('單價需為非負數（最多兩位小數）');if(!okQty(m.qty))p.push('數量需為正整數');if(!m.rating)p.push('請為這道餐點評分');if(p.length)e['m'+i]=p.join('、')});
+ if(!okMoney(d.paid))e.paid='請填寫實付金額（非負數，最多兩位小數）';
+ if(!d.revisit)e.revisit='請選擇回訪意願';
+ d.err=e;if(Object.keys(e).length){paint();const f=$('#dlg .err');f&&f.scrollIntoView({block:'center'});return}
+ const old=db.records.find(r=>r.id===d.id),now=new Date().toISOString();
+ const rec={id:d.id||uid('record'),restaurantName:d.name.trim(),visitDate:d.date,location:{address:d.address.trim(),city:d.city.trim(),district:d.district.trim(),lat:d.lat,lng:d.lng},meals:d.meals.map(m=>({id:m.id||uid('meal'),name:m.name.trim(),type:m.type.trim(),unitPrice:+m.price,quantity:+m.qty,rating:m.rating})),paidAmount:+d.paid,paidAmountMode:d.mode,revisitRating:d.revisit,sceneTags:[...d.tags],notes:d.notes.trim(),sourceWishlistId:d.src||null,createdAt:old?old.createdAt:now,updatedAt:now};
+ if(commit(()=>{
+  if(old)db.records[db.records.indexOf(old)]=rec;else db.records.push(rec);
+  rec.meals.forEach(m=>{if(!allTypes().includes(m.type))db.customMealTypes.push(m.type)});
+  rec.sceneTags.forEach(t=>{if(!allScenes().includes(t))db.customSceneTags.push(t)});
+  if(d.src)db.wishlist=db.wishlist.filter(w=>w.id!==d.src);
+ })){D=null;dmode='';$('#dlg').close();render();toast(old?'已更新 ✨':'打卡成功！🍡')}
+}
+function showDetail(id){
+ const r=db.records.find(x=>x.id===id);if(!r)return;dmode='view';
+ $('#dlg').innerHTML=`<h2>${esc(r.restaurantName)}</h2><div class="meta">📍 ${esc([region(r.location),r.location.address].filter(Boolean).join(' ')||'未填地址')} ・ ${r.visitDate}</div>
+<h3>餐點</h3>${r.meals.map(m=>`<p>${esc(m.name)}（${esc(m.type)}）${fmt(m.unitPrice)} × ${m.quantity} = ${fmt(cents(m.unitPrice)*m.quantity/100)} ・ ${stars(m.rating)}</p>`).join('')}
+<p>餐點總額 ${fmt(total(r))} ・ <b>實付 ${fmt(r.paidAmount)}</b></p><p>平均評分 ${avg(r).toFixed(1)} ★ ・ 回訪意願 ${stars(r.revisitRating)}</p>
+<div>${r.sceneTags.map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div><p style="white-space:pre-wrap">${esc(r.notes)}</p>
+<div class="acts"><button class="primary" data-act="edit" data-id="${esc(r.id)}">編輯</button><button class="ghost" data-act="cancel">關閉</button></div>`;
+ if(!$('#dlg').open)$('#dlg').showModal();
+}
+
+/* ---------- 想吃表單 ---------- */
+function openWish(w){
+ W=w?{...w}:{id:null};dmode='wish';const L=w?w.location:{};
+ $('#dlg').innerHTML=`<h2>${w?'編輯想吃':'新增想吃'} ✨</h2>
+<label>店家<input name="n" maxlength="100" value="${esc(w?w.restaurantName:'')}"><small class="err" id="e-n"></small></label>
+<label>想吃的餐點（每行一筆，可用「名稱,類型」）<textarea name="m" rows="3">${esc(w?w.desiredMeals.map(m=>m.name+(m.type?','+m.type:'')).join('\n'):'')}</textarea><small class="err" id="e-m"></small></label>
+<div class="meal"><label>縣市<input name="c" maxlength="50" value="${esc(L.city||'')}"></label><label>行政區<input name="d" maxlength="50" value="${esc(L.district||'')}"></label><label class="full">地址<input name="a" maxlength="300" value="${esc(L.address||'')}"></label></div>
+<label>想吃原因<textarea name="r" rows="2" maxlength="2000">${esc(w?w.reason:'')}</textarea></label>
+<div class="meal"><label>優先程度<select name="p">${['high','medium','low'].map(k=>`<option value="${k}"${(w?w.priority:'medium')===k?' selected':''}>${PRI[k]}</option>`).join('')}</select></label><label>收藏日期<input type="date" name="s" value="${w?w.savedDate:today()}"><small class="err" id="e-s"></small></label></div>
+<div class="acts"><button class="primary" data-act="wsave">儲存</button><button class="ghost" data-act="cancel">取消</button></div>`;
+ $('#dlg').showModal();
+}
+function saveWish(){
+ const g=n=>$(`#dlg [name=${n}]`).value;let bad=false;
+ ['n','m','s'].forEach(k=>$('#e-'+k).textContent='');
+ const name=g('n').trim(),date=g('s'),meals=g('m').split('\n').map(l=>l.trim()).filter(Boolean).map(l=>{const[a,...b]=l.split(/[,，]/);return{name:a.trim(),type:b.join(',').trim().slice(0,30)}});
+ if(!name){$('#e-n').textContent='請填寫店家';bad=true}
+ if(meals.some(m=>!m.name||m.name.length>100)){$('#e-m').textContent='餐點名稱不可為空，且不超過 100 字';bad=true}
+ if(!isDate(date)){$('#e-s').textContent='請選擇日期';bad=true}
+ if(bad)return;
+ const old=db.wishlist.find(x=>x.id===W.id),now=new Date().toISOString();
+ const w={id:W.id||uid('wishlist'),restaurantName:name,desiredMeals:meals,location:{address:g('a').trim(),city:g('c').trim(),district:g('d').trim(),lat:null,lng:null},reason:g('r').trim(),priority:g('p'),savedDate:date,createdAt:old?old.createdAt:now,updatedAt:now};
+ if(commit(()=>{old?db.wishlist[db.wishlist.indexOf(old)]=w:db.wishlist.push(w)})){dmode='';$('#dlg').close();render();toast('已收藏 ✨')}
+}
+
+/* ---------- 事件 ---------- */
+const tryClose=()=>{if(dmode==='rec'){sync();if(snap()!==D0&&!confirm('有未儲存的變更，確定要關閉嗎？'))return false}dmode='';D=null;$('#dlg').close();return true};
+$('#dlg').addEventListener('cancel',e=>{e.preventDefault();tryClose()});
+$('#dlg').addEventListener('input',e=>{
+ if(dmode!=='rec')return;const t=e.target;
+ if(t.dataset.f==='paid'){D.mode='manual';sync();upd()}
+ else if(t.dataset.m){sync();if(D.mode==='auto'){D.paid=String(sumDraft());$('#dlg [data-f=paid]').value=D.paid}upd()}
+});
+$('#dlg').addEventListener('click',e=>{if(e.target===$('#dlg')&&dmode==='view')tryClose()});
+document.addEventListener('click',e=>{
+ const b=e.target.closest('[data-act],[data-v],[data-star],[data-tag],[data-rm]');if(!b)return;const d=b.dataset;
+ if(d.v){view=d.v;render();return}
+ if(d.star){sync();d.star==='rev'?D.revisit=+d.v:D.meals[+d.star.slice(1)].rating=+d.v;paint();return}
+ if(d.tag){sync();const i=D.tags.indexOf(d.tag);i<0?D.tags.push(d.tag):D.tags.splice(i,1);paint();return}
+ if(d.rm!==undefined){sync();D.meals.splice(+d.rm,1);if(D.mode==='auto')D.paid=String(sumDraft());paint();return}
+ const id=d.id,r=()=>db.records.find(x=>x.id===id);
+ switch(d.act){
+  case'add':if(!$('#dlg').open)openRec();break;
+  case'open':showDetail(id);break;
+  case'edit':{const x=r();if(x){if($('#dlg').open)$('#dlg').close();openRec(draftOf(x))}break}
+  case'del':{const x=r();if(x&&confirm(`確定要刪除「${x.restaurantName}」這筆打卡嗎？`)&&commit(()=>{db.records=db.records.filter(y=>y.id!==id)})){render();toast('已刪除')}break}
+  case'clear':F={q:'',type:'',region:'',scene:'',sort:'new'};render();break;
+  case'addmeal':sync();D.meals.push(blankMeal());paint();break;
+  case'recalc':sync();D.mode='auto';D.paid=String(sumDraft());paint();break;
+  case'addtag':{sync();const t=$('#newtag').value.trim();if(t){if(t.length>30)return toast('場景最多 30 字',1);if(!allScenes().includes(t)&&!D.extra.includes(t))D.extra.push(t);if(!D.tags.includes(t))D.tags.push(t)}paint();break}
+  case'save':saveRec();break;
+  case'cancel':tryClose();break;
+  case'wadd':openWish();break;
+  case'wedit':openWish(db.wishlist.find(x=>x.id===id));break;
+  case'wsave':saveWish();break;
+  case'wdel':{const x=db.wishlist.find(y=>y.id===id);if(x&&confirm(`確定要刪除想吃項目「${x.restaurantName}」嗎？`)&&commit(()=>{db.wishlist=db.wishlist.filter(y=>y.id!==id)})){render();toast('已刪除')}break}
+  case'wgo':{const w=db.wishlist.find(x=>x.id===id);if(!w)break;const n=newDraft();Object.assign(n,{name:w.restaurantName,city:w.location.city,district:w.location.district,address:w.location.address,src:w.id,meals:w.desiredMeals.length?w.desiredMeals.map(m=>({name:m.name,type:m.type,price:'',qty:'1',rating:0})):[blankMeal()]});openRec(n);break}
+  case'export':{const o={appId:'foodie-checkin',exportedAt:new Date().toISOString(),...db};dl(JSON.stringify(o,null,2),`foodie-checkin-backup-${today()}.json`);toast('已匯出（不含照片）');break}
+  case'dlraw':dl(corrupt||'','foodie-checkin-raw.txt');break;
+  case'import':$('#file').click();break;
+ }
+});
+function dl(text,name){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:'application/json'}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+$('#file').onchange=async e=>{
+ const f=e.target.files[0];e.target.value='';if(!f)return;
+ if(f.size>5*1048576)return toast('檔案超過 5 MB',1);
+ let o;try{o=JSON.parse(await f.text())}catch{return toast('這不是有效的 JSON 檔案',1)}
+ const r=validate(o,true);if(typeof r==='string')return toast('匯入失敗：'+r,1);
+ if(!confirm(`將匯入 ${r.records.length} 筆打卡、${r.wishlist.length} 筆想吃，並覆蓋目前所有資料。\n建議先匯出現有資料備份，確定要匯入嗎？`))return;
+ const c=corrupt;corrupt=null;if(commit(()=>{db=r})){render();toast('匯入完成 ✨')}else corrupt=c;
+};
+document.addEventListener('input',e=>{
+ const t=e.target;if(view!=='list'||!t.closest('#app'))return;
+ if(t.id==='fq')F.q=t.value;else if(t.id==='ft')F.type=t.value;else if(t.id==='fr')F.region=t.value;else if(t.id==='fs')F.scene=t.value;else if(t.id==='fo')F.sort=t.value;else return;
+ renderRes();
+});
+render();
+</script></body></html>
