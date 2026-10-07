@@ -167,7 +167,7 @@ function draftOf(r){return{id:r.id,name:r.restaurantName,date:r.visitDate,city:r
 const sumDraft=()=>D.meals.reduce((s,m)=>s+(okMoney(m.price)?cents(+m.price):0)*(okQty(m.qty)?+m.qty:0),0)/100;
 function sync(){$$('#dlg [data-f]').forEach(i=>D[i.dataset.f]=i.value);$$('#dlg .meal').forEach(el=>{const m=D.meals[+el.dataset.i];el.querySelectorAll('[data-m]').forEach(i=>m[i.dataset.m]=i.value)})}
 const snap=()=>JSON.stringify({...D,err:0});
-function starBtns(key,v){return[1,2,3,4,5].map(n=>`<button type="button" class="st${n<=v?' on':''}" data-star="${key}" data-v="${n}" aria-label="${n} 星" aria-pressed="${n===v}">★</button>`).join('')+`<span class="meta">${v?v+' 星':'未評分'}</span>`}
+function starBtns(key,v){return[1,2,3,4,5].map(n=>`<button type="button" class="st${n<=v?' on':''}" data-star="${key}" data-n="${n}" aria-label="${n} 星" aria-pressed="${n===v}">★</button>`).join('')+`<span class="meta">${v?v+' 星':'未評分'}</span>`}
 function formHTML(){
  const e=D.err,E=k=>e[k]?`<small class="err" role="alert">${esc(e[k])}</small>`:'';
  const sc=[...new Set([...allScenes(),...D.extra])];
@@ -259,7 +259,7 @@ $('#dlg').addEventListener('click',e=>{if(e.target===$('#dlg')&&dmode==='view')t
 document.addEventListener('click',e=>{
  const b=e.target.closest('[data-act],[data-v],[data-star],[data-tag],[data-rm]');if(!b)return;const d=b.dataset;
  if(d.v){view=d.v;render();return}
- if(d.star){sync();d.star==='rev'?D.revisit=+d.v:D.meals[+d.star.slice(1)].rating=+d.v;paint();return}
+ if(d.star){sync();d.star==='rev'?D.revisit=+d.n:D.meals[+d.star.slice(1)].rating=+d.n;paint();return}
  if(d.tag){sync();const i=D.tags.indexOf(d.tag);i<0?D.tags.push(d.tag):D.tags.splice(i,1);paint();return}
  if(d.rm!==undefined){sync();D.meals.splice(+d.rm,1);if(D.mode==='auto')D.paid=String(sumDraft());paint();return}
  const id=d.id,r=()=>db.records.find(x=>x.id===id);
